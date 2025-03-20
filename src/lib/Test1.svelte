@@ -1,28 +1,28 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 	import { WebR } from 'webr';
+
 	const webR = new WebR({ interactive: false });
 
-	let output_dom = $state();
-	let plot_dom = $state();
+	let r_output = $state();
 	let markup = $state();
+	let plot_dom = $state();
 
 	let is_webr_ready = $state(false);
+	let is_pkg_ready = $state(false);
 	let is_output_ready = $state(false);
-
-	let r_result = $state();
 
 	onMount(async () => {
 		markup = 'Initializing webR';
 		await webR.init();
+		is_webr_ready = true;
 
 		markup = 'Installing R packages';
 		await webR.installPackages(['jsonlite', 'ggplot2', 'plotly'], true);
-
-		is_webr_ready = true;
+		is_pkg_ready = true;
 
 		markup = 'Generating plot';
-		r_result = await webR.evalRString(`
+		const r_result = await webR.evalRString(`
 library(plotly)
 library(ggplot2)
 
@@ -32,7 +32,13 @@ p <- ggplot(mpg, aes(displ, hwy, colour = class)) +
 plotly_json(p, pretty = FALSE)
 `);
 
+		// console.log(r_result);
+
+		r_output = r_result;
+
 		is_output_ready = true;
+
+		markup = 'Rendering Plotly plot';
 
 		Plotly.newPlot(plot_dom, JSON.parse(r_result), {});
 
@@ -40,7 +46,7 @@ plotly_json(p, pretty = FALSE)
 	});
 
 	onDestroy(() => {
-		// webR?.destroy(result); // TODO: garbage collection
+		// webR?.destroy(r_result); // TODO: garbage collection
 		webR?.close();
 	});
 </script>
@@ -53,10 +59,23 @@ plotly_json(p, pretty = FALSE)
 	></script>
 </svelte:head>
 
-<pre><code>R is ready: {is_webr_ready}</code> | <code>Plot is ready: {is_output_ready}</code></pre>
+<div>
+	<pre><code>R ready: {is_webr_ready}</code> | <code>Packages ready: {is_pkg_ready}</code> | <code
+			>Plot ready: {is_output_ready}</code
+		></pre>
+</div>
 
 <div>
-	<pre><code id="out" bind:this={output_dom}>{@html markup}</code></pre>
+	<pre><code>{@html markup}</code></pre>
 </div>
 
 <figure bind:this={plot_dom}></figure>
+
+{#if is_output_ready}
+	<div>
+		<details>
+			<summary>R output</summary>
+			<pre><code>{JSON.stringify(JSON.parse(r_output), null, 2)}</code></pre>
+		</details>
+	</div>
+{/if}
