@@ -1,6 +1,7 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 	import { WebR } from 'webr';
+	import r_test from './test.R?raw';
 
 	const webR = new WebR({ interactive: false });
 
@@ -22,15 +23,7 @@
 		is_pkg_ready = true;
 
 		markup = 'Generating plot';
-		const r_result = await webR.evalRString(`
-library(plotly)
-library(ggplot2)
-
-p <- ggplot(mpg, aes(displ, hwy, colour = class)) +
-  geom_point()
-
-plotly_json(p, pretty = FALSE)
-`);
+		const r_result = await webR.evalRString(r_test);
 
 		// console.log(r_result);
 
